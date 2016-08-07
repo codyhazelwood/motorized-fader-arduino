@@ -64,162 +64,162 @@ bool     positionUpdated = false; //Since touching, has the MIDI position been u
 CapSense touchLine     = CapSense(touchSend, touchReceive);
 
 void setup() {
-	MIDI.begin(MIDI_CHANNEL_OMNI);  //Receive messages on all MIDI channels
-	MIDI.turnThruOff();             //We don't need MIDI through for this
+    MIDI.begin(MIDI_CHANNEL_OMNI);  //Receive messages on all MIDI channels
+    MIDI.turnThruOff();             //We don't need MIDI through for this
 
-	pinMode (motorUp, OUTPUT);
-	pinMode (motorDown, OUTPUT);
+    pinMode (motorUp, OUTPUT);
+    pinMode (motorDown, OUTPUT);
 
-	calibrateFader();
+    calibrateFader();
 
-	attachInterrupt(0, nextChannel, RISING);
-	attachInterrupt(1, prevChannel, RISING);
+    attachInterrupt(0, nextChannel, RISING);
+    attachInterrupt(1, prevChannel, RISING);
 }
 
 void loop() {
-	/* If there is a MIDI message waiting, and it is for the currently selected
-	   fader, and it is a PitchBend message (used for fader control), then convert
-	   the PitchBend value and update the fader's current position.  */
-	if (MIDI.read() && MIDI.getChannel() == faderChannel && MIDI.getType() == PitchBend ) {
-		/* Bitwise math to take two 7 bit values for the PitchBend and convert to
-		   a single 14 bit value.  Then converts it to value between 0 and 1023
-		   to control the fader. */
-		int value = (((MIDI.getData2() << 7) + MIDI.getData1()) * 0.0625);
-		updateFader(value);
-	}
+    /* If there is a MIDI message waiting, and it is for the currently selected
+       fader, and it is a PitchBend message (used for fader control), then convert
+       the PitchBend value and update the fader's current position.  */
+    if (MIDI.read() && MIDI.getChannel() == faderChannel && MIDI.getType() == PitchBend ) {
+        /* Bitwise math to take two 7 bit values for the PitchBend and convert to
+           a single 14 bit value.  Then converts it to value between 0 and 1023
+           to control the fader. */
+        int value = (((MIDI.getData2() << 7) + MIDI.getData1()) * 0.0625);
+        updateFader(value);
+    }
 
-	checkTouch();  //Checks to see if the fader is being touched
+    checkTouch();  //Checks to see if the fader is being touched
 
-	//If the fader has been touched, it needs to update the position on the MIDI host
-	if (!positionUpdated) {
-		updateFaderMidi();
-		positionUpdated = true;
-	}
+    //If the fader has been touched, it needs to update the position on the MIDI host
+    if (!positionUpdated) {
+        updateFaderMidi();
+        positionUpdated = true;
+    }
 }
 
 void updateFaderMidi() {
-	int  velocity    = faderPosition();
-	byte channelData = 0xE0 + (faderChannel - 1);
-	                                         // MIDI Message:
-	Serial.write(channelData);               //  E(PitchBend)  Channel (0-9)
-	Serial.write(velocity & 0x7F);           //  Least Sig Bits of Data
-	Serial.write((velocity >> 7) & 0x7F);    //  Most  Sig Bits of Data
+    int  velocity    = faderPosition();
+    byte channelData = 0xE0 + (faderChannel - 1);
+                                             // MIDI Message:
+    Serial.write(channelData);               //  E(PitchBend)  Channel (0-9)
+    Serial.write(velocity & 0x7F);           //  Least Sig Bits of Data
+    Serial.write((velocity >> 7) & 0x7F);    //  Most  Sig Bits of Data
 }
 
 //Calibrates the min and max position of the fader
 void calibrateFader() {
-	//Send fader to the top and read max position
-	digitalWrite(motorUp, HIGH);
-	delay(250);
-	digitalWrite(motorUp, LOW);
-	faderMax = analogRead(wiper) - 5;
+    //Send fader to the top and read max position
+    digitalWrite(motorUp, HIGH);
+    delay(250);
+    digitalWrite(motorUp, LOW);
+    faderMax = analogRead(wiper) - 5;
 
-	//Send fader to the bottom and read min position
-	digitalWrite(motorDown, HIGH);
-	delay(250);
-	digitalWrite(motorDown, LOW);
-	faderMin = analogRead(wiper) + 5;
+    //Send fader to the bottom and read min position
+    digitalWrite(motorDown, HIGH);
+    delay(250);
+    digitalWrite(motorDown, LOW);
+    faderMin = analogRead(wiper) + 5;
 }
 
 //Returns a MIDI pitch bend value for the fader's current position
 //Cases ensure that there is a -infinity (min) and max value despite possible math error
 int faderPosition() {
-	int position = analogRead(wiper);
-	int returnValue = 0;
+    int position = analogRead(wiper);
+    int returnValue = 0;
 
-	if (position <= faderMin) {
-		returnValue = 0;
-	}
-	else if (position >= faderMax) {
-		returnValue = 16383;
-	}
-	else {
-		returnValue = ((float)(position - faderMin) / (faderMax - faderMin)) * 16383;
-	}
+    if (position <= faderMin) {
+        returnValue = 0;
+    }
+    else if (position >= faderMax) {
+        returnValue = 16383;
+    }
+    else {
+        returnValue = ((float)(position - faderMin) / (faderMax - faderMin)) * 16383;
+    }
 
-	return returnValue;
+    return returnValue;
 }
 
 //Check to see if the fader is being touched
 void checkTouch() {
-	//For the capSense comparison below,
+    //For the capSense comparison below,
     //700 is arbitrary and may need to be changed
-	//depending on the fader cap used (if any).
+    //depending on the fader cap used (if any).
 
-	if (!touched && touchLine.capSense(30) >= 700) {
-		touched = true;
+    if (!touched && touchLine.capSense(30) >= 700) {
+        touched = true;
 
-		//Send MIDI Touch On Message
-		Serial.write(0x90);
-		Serial.write(0x67 + faderChannel);
-		Serial.write(0x7f);
-	}
-	else if (touched && touchLine.capSense(30) < 700) {
-		touched = false;
+        //Send MIDI Touch On Message
+        Serial.write(0x90);
+        Serial.write(0x67 + faderChannel);
+        Serial.write(0x7f);
+    }
+    else if (touched && touchLine.capSense(30) < 700) {
+        touched = false;
 
-		//Send MIDI Touch Off Message
-		Serial.write(0x90);
-		Serial.write(0x67 + faderChannel);
-		Serial.write((byte) 0x00);
-	}
+        //Send MIDI Touch Off Message
+        Serial.write(0x90);
+        Serial.write(0x67 + faderChannel);
+        Serial.write((byte) 0x00);
+    }
 
-	if (touched) {
-		positionUpdated = false;
-	}
+    if (touched) {
+        positionUpdated = false;
+    }
 }
 
 //Function to move fader to a specific position between 0-1023 if it's not already there
 void updateFader(int position) {
-	if (position < analogRead(wiper) - 10 && position > faderMin && !touched) {
-		digitalWrite(motorDown, HIGH);
-		while (position < analogRead(wiper) - 10 && !touched) {};  //Loops until motor is done moving
-		digitalWrite(motorDown, LOW);
-	}
-	else if (position > analogRead(wiper) + 10 && position < faderMax && !touched) {
-		digitalWrite(motorUp, HIGH);
-		while (position > analogRead(wiper) + 10 && !touched) {}; //Loops until motor is done moving
-		digitalWrite(motorUp, LOW);
-	}
+    if (position < analogRead(wiper) - 10 && position > faderMin && !touched) {
+        digitalWrite(motorDown, HIGH);
+        while (position < analogRead(wiper) - 10 && !touched) {};  //Loops until motor is done moving
+        digitalWrite(motorDown, LOW);
+    }
+    else if (position > analogRead(wiper) + 10 && position < faderMax && !touched) {
+        digitalWrite(motorUp, HIGH);
+        while (position > analogRead(wiper) + 10 && !touched) {}; //Loops until motor is done moving
+        digitalWrite(motorUp, LOW);
+    }
 }
 
 //Selects the next channel in the DAW
 void nextChannel() {
-	static unsigned long last_interrupt0_time = 0;      //Interrupt Debouncing
-	unsigned long interrupt0_time = millis();           //Interrupt Debouncing
+    static unsigned long last_interrupt0_time = 0;      //Interrupt Debouncing
+    unsigned long interrupt0_time = millis();           //Interrupt Debouncing
 
-	if (interrupt0_time - last_interrupt0_time > 200) { //Interrupt Debouncing
-		if (faderChannel < 8) {
-			faderChannel++;
+    if (interrupt0_time - last_interrupt0_time > 200) { //Interrupt Debouncing
+        if (faderChannel < 8) {
+            faderChannel++;
 
-			Serial.write(0x90);
-			Serial.write(0x17 + faderChannel);
-			Serial.write(0x7f);                         //Note On
-			Serial.write(0x90);
-			Serial.write(0x17 + faderChannel);
-			Serial.write((byte) 0x00);		            //Note Off
-		}
-	}
+            Serial.write(0x90);
+            Serial.write(0x17 + faderChannel);
+            Serial.write(0x7f);                         //Note On
+            Serial.write(0x90);
+            Serial.write(0x17 + faderChannel);
+            Serial.write((byte) 0x00);                    //Note Off
+        }
+    }
 
-	last_interrupt0_time = interrupt0_time;             //Interrupt Debouncing
+    last_interrupt0_time = interrupt0_time;             //Interrupt Debouncing
 }
 
 //Selects the previous channel in the DAW
 void prevChannel() {
-	static unsigned long last_interrupt1_time = 0;      //Interrupt Debouncing
-	unsigned long interrupt1_time = millis();           //Interrupt Debouncing
+    static unsigned long last_interrupt1_time = 0;      //Interrupt Debouncing
+    unsigned long interrupt1_time = millis();           //Interrupt Debouncing
 
-	if (interrupt1_time - last_interrupt1_time > 200) { //Interrupt Debouncing
-		if (faderChannel > 1) {
-			faderChannel--;
+    if (interrupt1_time - last_interrupt1_time > 200) { //Interrupt Debouncing
+        if (faderChannel > 1) {
+            faderChannel--;
 
-			Serial.write(0x90);
-			Serial.write(0x17 + faderChannel);
-			Serial.write(0x7f);                         //Note On
-			Serial.write(0x90);
-			Serial.write(0x17 + faderChannel);
-			Serial.write((byte) 0x00);		            //Note Off
-		}
-	}
+            Serial.write(0x90);
+            Serial.write(0x17 + faderChannel);
+            Serial.write(0x7f);                         //Note On
+            Serial.write(0x90);
+            Serial.write(0x17 + faderChannel);
+            Serial.write((byte) 0x00);                    //Note Off
+        }
+    }
 
-	last_interrupt1_time = interrupt1_time;             //Interrupt Debouncing
+    last_interrupt1_time = interrupt1_time;             //Interrupt Debouncing
 }
