@@ -8,23 +8,29 @@
  *               MIDI Library for Arduino
  *               http://www.arduino.cc/playground/Main/MIDILibrary
  * -----------------------------------------------------------------------
- * Copyright © 2012.  Cody Hazelwood.
- *              
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Copyright (c) 2012 Cody Hazelwood
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ * -----------------------------------------------------------------------
  * -----------------------------------------------------------------------
  */
- 
+
  /************************************************************************
   *   Currently known issues:
   *
@@ -35,7 +41,7 @@
   *         work fine (Cubase, Logic, Digital Performer, Live, etc.)
   *
   *************************************************************************/
-  
+
 #include <CapSense.h>         //Library for fader touch sensitivity
 #include <MIDI.h>             //Library for receiving MIDI messages
 
@@ -56,20 +62,20 @@ bool     touched         = false; //Is the fader currently being touched?
 bool     positionUpdated = false; //Since touching, has the MIDI position been updated?
 
 CapSense touchLine     = CapSense(touchSend, touchReceive);
- 
+
 void setup() {
 	MIDI.begin(MIDI_CHANNEL_OMNI);  //Receive messages on all MIDI channels
 	MIDI.turnThruOff();             //We don't need MIDI through for this
-	
+
 	pinMode (motorUp, OUTPUT);
 	pinMode (motorDown, OUTPUT);
-	
+
 	calibrateFader();
-	
+
 	attachInterrupt(0, nextChannel, RISING);
 	attachInterrupt(1, prevChannel, RISING);
-} 
- 
+}
+
 void loop() {
 	/* If there is a MIDI message waiting, and it is for the currently selected
 	   fader, and it is a PitchBend message (used for fader control), then convert
@@ -81,14 +87,14 @@ void loop() {
 		int value = (((MIDI.getData2() << 7) + MIDI.getData1()) * 0.0625);
 		updateFader(value);
 	}
-	
+
 	checkTouch();  //Checks to see if the fader is being touched
-	
+
 	//If the fader has been touched, it needs to update the position on the MIDI host
-	if (!positionUpdated) {	
+	if (!positionUpdated) {
 		updateFaderMidi();
 		positionUpdated = true;
-	}	
+	}
 }
 
 void updateFaderMidi() {
@@ -105,9 +111,9 @@ void calibrateFader() {
 	//Send fader to the top and read max position
 	digitalWrite(motorUp, HIGH);
 	delay(250);
-	digitalWrite(motorUp, LOW);	
+	digitalWrite(motorUp, LOW);
 	faderMax = analogRead(wiper) - 5;
-	
+
 	//Send fader to the bottom and read min position
 	digitalWrite(motorDown, HIGH);
 	delay(250);
@@ -120,7 +126,7 @@ void calibrateFader() {
 int faderPosition() {
 	int position = analogRead(wiper);
 	int returnValue = 0;
-	
+
 	if (position <= faderMin) {
 		returnValue = 0;
 	}
@@ -128,9 +134,9 @@ int faderPosition() {
 		returnValue = 16383;
 	}
 	else {
-		returnValue = ((float)(position - faderMin) / (faderMax - faderMin)) * 16383;		 
+		returnValue = ((float)(position - faderMin) / (faderMax - faderMin)) * 16383;
 	}
-	
+
 	return returnValue;
 }
 
@@ -142,7 +148,7 @@ void checkTouch() {
 
 	if (!touched && touchLine.capSense(30) >= 700) {
 		touched = true;
-		
+
 		//Send MIDI Touch On Message
 		Serial.write(0x90);
 		Serial.write(0x67 + faderChannel);
@@ -150,20 +156,20 @@ void checkTouch() {
 	}
 	else if (touched && touchLine.capSense(30) < 700) {
 		touched = false;
-		
+
 		//Send MIDI Touch Off Message
 		Serial.write(0x90);
 		Serial.write(0x67 + faderChannel);
 		Serial.write((byte) 0x00);
 	}
-	
+
 	if (touched) {
 		positionUpdated = false;
 	}
 }
 
 //Function to move fader to a specific position between 0-1023 if it's not already there
-void updateFader(int position) {	
+void updateFader(int position) {
 	if (position < analogRead(wiper) - 10 && position > faderMin && !touched) {
 		digitalWrite(motorDown, HIGH);
 		while (position < analogRead(wiper) - 10 && !touched) {};  //Loops until motor is done moving
@@ -180,11 +186,11 @@ void updateFader(int position) {
 void nextChannel() {
 	static unsigned long last_interrupt0_time = 0;      //Interrupt Debouncing
 	unsigned long interrupt0_time = millis();           //Interrupt Debouncing
-	
+
 	if (interrupt0_time - last_interrupt0_time > 200) { //Interrupt Debouncing
 		if (faderChannel < 8) {
 			faderChannel++;
-			
+
 			Serial.write(0x90);
 			Serial.write(0x17 + faderChannel);
 			Serial.write(0x7f);                         //Note On
@@ -193,7 +199,7 @@ void nextChannel() {
 			Serial.write((byte) 0x00);		            //Note Off
 		}
 	}
-	
+
 	last_interrupt0_time = interrupt0_time;             //Interrupt Debouncing
 }
 
@@ -201,11 +207,11 @@ void nextChannel() {
 void prevChannel() {
 	static unsigned long last_interrupt1_time = 0;      //Interrupt Debouncing
 	unsigned long interrupt1_time = millis();           //Interrupt Debouncing
-	
+
 	if (interrupt1_time - last_interrupt1_time > 200) { //Interrupt Debouncing
 		if (faderChannel > 1) {
 			faderChannel--;
-		
+
 			Serial.write(0x90);
 			Serial.write(0x17 + faderChannel);
 			Serial.write(0x7f);                         //Note On
@@ -214,6 +220,6 @@ void prevChannel() {
 			Serial.write((byte) 0x00);		            //Note Off
 		}
 	}
-	
+
 	last_interrupt1_time = interrupt1_time;             //Interrupt Debouncing
 }

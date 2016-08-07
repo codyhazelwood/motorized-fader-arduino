@@ -3,28 +3,33 @@
  * Date:         March 20, 2012
  * Platform:     Arduino Uno
  * Description:  Calibrates a motorized fader's max and min
- *               position.  Allows changing the position with an 
- *               external potentiometer.  Uses a capacitance 
+ *               position.  Allows changing the position with an
+ *               external potentiometer.  Uses a capacitance
  *               sensing circuit for touch sensitivity.
- *               More or less a proof of concept to be used in a future 
+ *               More or less a proof of concept to be used in a future
  *               project.
  * Dependencies: CapSense Arduino Library (for fader touch sensitivity)
  *               http://www.arduino.cc/playground/Main/CapSense
  * -----------------------------------------------------------------------
- * Copyright 2012.  Cody Hazelwood.
- *              
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Copyright (c) 2012 Cody Hazelwood
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
  * -----------------------------------------------------------------------
  */
 
@@ -47,18 +52,18 @@ double faderMin        = 0;   //Value read by fader's minimum position (0-1023)
 CapSense touchLine     = CapSense(touchSend, touchReceive);
 
 volatile bool touched  = false; //Is the fader currently being touched?
- 
-void setup() {    
+
+void setup() {
     pinMode (motorUp, OUTPUT);
     pinMode (motorDown, OUTPUT);
-    
+
     calibrateFader();
-} 
- 
+}
+
 void loop() {
     int state = analogRead(pot);    //Read the state of the potentiometer
     checkTouch();                   //Checks to see if the fader is being touched
-    
+
     if (state < analogRead(wiper) - 10 && state > faderMin && !touched) {
         digitalWrite(motorDown, HIGH);
         while (state < analogRead(wiper) - 10 && !touched) {};  //Loops until motor is done moving
@@ -76,9 +81,9 @@ void calibrateFader() {
     //Send fader to the top and read max position
     digitalWrite(motorUp, HIGH);
     delay(250);
-    digitalWrite(motorUp, LOW);    
+    digitalWrite(motorUp, LOW);
     faderMax = analogRead(wiper);
-    
+
     //Send fader to the bottom and read max position
     digitalWrite(motorDown, HIGH);
     delay(250);
